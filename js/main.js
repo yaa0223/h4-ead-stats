@@ -3,28 +3,72 @@ window.onload = function() {
   Plotly.d3.csv('data.csv', function(err, rows){
     console.log(rows[0]);
     data = rows;
-    plot(data);
+    update();
   });
 
   $('#service-center').change(function() {
-    plot(data);
+    update();
   });
 
   $("#premium").change(function() {
-    plot(data);
+    update();
   });
 
   $("#application-type").change(function() {
-    plot(data);
+    update();
   });
 
+  var showStats = function(x) {
+    if (!x.length) {
+      $('#stats').text("No data")
+    }
+
+    x.sort(function(a, b) {
+      return a - b;
+    });
+    var median_index = Math.floor(x.length/2);
+    var sum = x.reduce(function(prev, curr) {
+      return prev + curr;
+    }, 0);
+    var avg = sum / x.length;
+    var stats_str = "Min: " + x[0].toFixed(0) +
+                    ", Max: " + x[x.length - 1].toFixed(0) +
+                    ", Median: " + x[median_index].toFixed(0) +
+                    ", Average: " + avg.toFixed(0) +
+                    ", Count: " + x.length;
+    $('#stats').text(stats_str);
+  };
+
   /**
-   * @param {string} service_center Service center name or 'all'
-   * @param {string} premium 'all', 'yes', 'no'
-   * @param {string} application_type 'all', 'renewal', 'new application'
-   * @param {Array.{Object}} rows rows in data.csv
+   * Plot a histgram given x
    */
-  var plot = function(rows) {
+  var plot = function(x) {
+    var data = [
+      {
+        type: 'histogram',
+        x: x,
+        autobinx: false,
+        xbins: {
+          start: 0,
+          end: 365,
+          size: 7
+        },
+      }
+    ];
+    var layout = {
+      xaxis: {title: 'Total Processing Days'},
+      yaxis: {title: 'Count'},
+      bargap: 0.25,
+      bargroupgap: 0.3
+    };
+    Plotly.newPlot('graph', data, layout);
+  };
+
+  var update = function() {
+    if (!data.length) {
+      return;
+    }
+
     var service_center = "all";
     $("#service-center option:selected").each(function() {
       service_center = $(this).text().toLowerCase();
@@ -38,7 +82,7 @@ window.onload = function() {
       application_type = $(this).text().toLowerCase();
     });
 
-    var filtered_rows = rows;
+    var filtered_rows = data;
     if (service_center != 'all') {
       filtered_rows = filtered_rows.filter(function(row) {
         return row.service_center.toLowerCase() == service_center;
@@ -57,15 +101,10 @@ window.onload = function() {
         return row.application_type.toLowerCase() == application_type;
       })
     }
-    x = filtered_rows.map(function(row) {
+    var x = filtered_rows.map(function(row) {
       return parseInt(row.total_processing_days);
     });
-    var data = [
-      {
-        x: x,
-        type: 'histogram'
-      }
-    ];
-    Plotly.newPlot('graph', data);
+    showStats(x);
+    plot(x);
   };
 }
